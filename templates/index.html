@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>CCTV</title>
+    <style>
+        @font-face {
+            font-family: 'CustomFont';
+            src: url('/static/fonts/KOTRA_BOLD.ttf') format('truetype');
+        }
+
+        body {
+            font-family: 'CustomFont', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: #002147;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .video-stream {
+            width: 75%;
+            background-color: #f9f9f9;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .video-wrapper {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            aspect-ratio: 16/9;
+        }
+
+        .video-wrapper img {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            
+        }
+
+        .video-stream h2 {
+            margin: 0 0 10px 0;
+            font-size: 20px;
+            text-align: center;
+        }
+
+        .sidebar {
+            width: 25%;
+            background-color: #f2f2f2;
+            padding: 20px;
+            box-shadow: -2px 0px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        .warnings-table {
+            flex-grow: 1;
+            margin-bottom: 10px;
+            position: relative;
+            overflow: auto; /* 스크롤 처리 */
+            
+        }
+
+        .warnings-table h2 {
+            position: sticky; /* 제목 고정 */
+            top: 0;
+            background-color: #f2f2f2; /* 배경색 */
+            z-index: 2; /* 다른 요소 위로 */
+            margin: 0;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        /* 테이블 컨테이너 스타일 */
+        .warning-section {
+            height: 400px;
+            border: 1px solid #ddd;
+            overflow-y: auto;
+            background-color: white;
+        }
+
+        table {
+            width: 100%;
+            height: 100%;
+            table-layout: fixed;
+            margin-top: 0px;
+        }
+
+        thead {
+            position: absolute;
+            top: 245px;
+            background-color: #e0e0e0;
+            z-index: 2;
+            width: 23.9vw;
+        }
+
+        thead th {
+            padding: 10px;
+            background-color: #e0e0e0;
+            border-bottom: 2px solid #bbb;
+            height: 40px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+        }
+
+
+        thead th:nth-child(3) {
+            padding: 10px;
+            background-color: #e0e0e0;
+            border-bottom: 2px solid #bbb;
+            height: 40px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            width: 4.5vw;
+        }
+
+        thead th:nth-child(2) {
+            padding: 10px;
+            background-color: #e0e0e0;
+            border-bottom: 2px solid #bbb;
+            height: 40px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            width: 16vw;
+        }
+
+
+        /* 본문 테이블 열 너비 설정 */
+        tbody td:first-child {
+            width: 35px;
+            min-width: 30px;
+            max-width: 35px;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+        }
+
+        tbody td:nth-child(3) {
+            width: 60px;
+            min-width: 60px;
+            max-width: 60px;
+        }
+
+        tbody td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+            height: 40px;
+            line-height: 40px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            background-color: white;
+        }
+
+        tbody tr {
+            height: 20px;
+        }
+
+        /* 체크박스 열 정렬 */
+        td:first-child, 
+        th:first-child {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        /* 체크박스 중앙 정렬 */
+        input[type="checkbox"] {
+            margin: 0;
+            vertical-align: middle;
+        }
+
+        .settings {
+            margin-bottom: 20px;
+        }
+
+        .settings label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .settings input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            margin-left: 10px;
+            margin-right: 10px;
+        }
+
+        .settings button {
+            margin-top: 10px; /* 간격 추가 */
+        }
+
+        .buttons {
+            position: sticky; /* 버튼 컨테이너를 고정 */
+            bottom: 0; /* 사이드바 하단에 고정 */
+            background-color: #f2f2f2;
+            padding: 10px;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+
+        button {
+            background-color: #002d62;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-family: 'CustomFont', sans-serif;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #003d99;
+        }
+
+        /* 팝업창 스타일 */
+        .warning-popup {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #ff4444;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            animation: slideIn 0.5s ease-out;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .temp {
+            height: 80px;
+        }
+
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        CCTV
+    </header>
+    <div class="container">
+        <!-- CCTV 영상 스트림 -->
+        <div class="video-stream">
+            <div class="video-wrapper">
+                <h2>CAM no.1</h2>
+                <img src="{{ url_for('video_feed_1') }}" alt="CCTV 스트림 1">
+            </div>
+            <div class="video-wrapper">
+                <h2>CAM no.2</h2>
+                <img src="{{ url_for('video_feed_2') }}" alt="CCTV 스트림 2">
+            </div>
+        </div>
+
+        <!-- 우측 사이드바 -->
+        <div class="sidebar">
+            <!-- 제한 인원 설정 -->
+            <div class="settings">
+                <h2>제한 인원 설정</h2>
+                <label for="camSelect">CAM no.</label>
+                <select id="camSelect">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                </select>
+                <input type="number" id="limitInput" value="1" min="1">
+                <button onclick="setPersonLimit()">설정</button>
+            </div>
+            <div class="temp">
+            </div>
+            <!-- 경고 목록 -->
+            <div class="warning-section">
+                <table>
+                    <colgroup>
+                        <col width="30">
+                        <col>
+                        <col width="60">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAll"></th>
+                            <th>시간</th>
+                            <th>ID</th>
+                        </tr>
+                    </thead>
+                    <tbody id="warningList">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 버튼 고정 -->
+            <div class="buttons">
+                <button onclick="deleteSelected()">선택 삭제</button>
+                <button onclick="showRescueForm()">구조 요청</button>
+                <div id="rescueForm">
+                    <input type="text" id="rescueText" placeholder="구조 요청 내용 입력">
+                    <button onclick="submitRescue()">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let checkedBoxes = {};// 인원 제한 설정
+        function setPersonLimit() {
+            const camSelect = document.getElementById('camSelect');
+            const limitInput = document.getElementById('limitInput');
+            const selectedCam = camSelect.value;
+            const limit = parseInt(limitInput.value);
+            
+            const stream_id = `stream${selectedCam}`;
+            
+            fetch('/set_person_limit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stream_id: stream_id, limit: limit })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`CAM no.${selectedCam}의 인원 제한이 ${limit}명으로 설정되었습니다.`);
+                } else {
+                    alert('오류: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('설정 중 오류가 발생했습니다.');
+            });
+        }
+
+        // 밀도 체크
+        function checkDensity() {
+            fetch('/check_density')
+                .then(response => response.json())
+                .then(data => {
+                    // 각 스트림별 경고 상태 확인
+                    Object.keys(data.is_over_limit).forEach(stream_id => {
+                        const camNo = stream_id.replace('stream', '');
+                        const warningElement = document.createElement('div');
+                        warningElement.style.position = 'absolute';
+                        warningElement.style.top = '10px';
+                        warningElement.style.left = '10px';
+                        warningElement.style.color = 'red';
+                        warningElement.style.fontSize = '24px';
+                        warningElement.style.fontWeight = 'bold';
+                        
+                        const videoWrapper = document.querySelector(`.video-wrapper:nth-child(${camNo})`);
+                        
+                        // 기존 경고 메시지 제거
+                        const existingWarning = videoWrapper.querySelector('.density-warning');
+                        if (existingWarning) {
+                            existingWarning.remove();
+                        }
+                        
+                        // 제한 초과시 경고 메시지 표시
+                        if (data.is_over_limit[stream_id]) {
+                            warningElement.textContent = '경고: 인원 제한 초과!';
+                            warningElement.className = 'density-warning';
+                            videoWrapper.style.position = 'relative';
+                            videoWrapper.appendChild(warningElement);
+                        }
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // 주기적으로 밀도 체크
+        setInterval(checkDensity, 1000);
+
+        // 전체 선택 체크박스 이벤트 리스너
+        document.getElementById('selectAll').addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.warning-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+                const key = `${checkbox.dataset.id}_${checkbox.dataset.timestamp}_${checkbox.dataset.cam}`;
+                if (this.checked) {
+                    checkedBoxes[key] = true;
+                } else {
+                    delete checkedBoxes[key];
+                }
+            });
+        });
+
+        function setLimit() {
+            const camSelect = document.getElementById('camSelect').value;
+            const limitInput = document.getElementById('limitInput');
+            const limitValue = limitInput.value;
+
+            if (limitValue === '') {
+                alert('설정값을 입력해 주세요.');
+                return;
+            }
+
+            if (!Number.isInteger(Number(limitValue)) || Number(limitValue) <= 0) {
+                alert('정수만 입력해 주세요.');
+                return;
+            }
+
+            alert(`CAM no.${camSelect}의 제한 인원이 ${limitValue}명으로 설정되었습니다.`);
+        }
+
+        function deleteSelected() {
+            var selectedItems = getSelectedWarnings();
+            
+            if (selectedItems.length === 0) {
+                alert('삭제할 항목을 선택해주세요.');
+                return;
+            }
+
+            fetch('/delete_warnings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({selected_items: selectedItems})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('경고가 성공적으로 삭제되었습니다');
+                    resetCheckedBoxes();
+                    fetchWarnings();
+                    // 체크박스 초기화
+                    document.getElementById('selectAll').checked = false;
+                    const allCheckboxes = document.querySelectorAll('input[type="checkbox"]');
+                    allCheckboxes.forEach(cb => cb.checked = false);
+                } else {
+                    console.error('경고 삭제 중 오류 발생:', data.error);
+                }
+            })
+            .catch(error => console.error('경고 삭제 중 오류 발생:', error));
+        }
+
+        function showRescueForm() {
+            const rescueForm = document.getElementById('rescueForm');
+
+            // 토글 방식으로 열고 닫기
+            if (rescueForm.style.display === 'block') {
+                rescueForm.style.display = 'none';
+            } else {
+                rescueForm.style.display = 'block';
+            }
+        }
+
+        function submitRescue() {
+            var selectedItems = getSelectedWarnings();
+            
+            if (selectedItems.length === 0) {
+                alert('구조 요청할 항목을 선택해주세요.');
+                return;
+            }
+
+            var rescueText = document.getElementById('rescueText').value;
+            
+            fetch('/submit_rescue', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({selected_items: selectedItems, rescue_text: rescueText})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('구조 요청이 성공적으로 처리되었습니다');
+                    resetCheckedBoxes();
+                    fetchWarnings();
+                    document.getElementById('rescueForm').style.display = 'none';
+                    document.getElementById('rescueText').value = '';
+                    // 체크박스 초기화
+                    document.getElementById('selectAll').checked = false;
+                    const allCheckboxes = document.querySelectorAll('input[type="checkbox"]');
+                    allCheckboxes.forEach(cb => cb.checked = false);
+                } else {
+                    console.error('구조 요청 처리 중 오류 발생:', data.error);
+                }
+            })
+            .catch(error => console.error('구조 요청 처리 중 오류 발생:', error));
+        }
+
+        function getSelectedWarnings() {
+            const checkboxes = document.querySelectorAll('.warning-checkbox:checked');
+            return Array.from(checkboxes).map(checkbox => ({
+                object_id: checkbox.dataset.id,
+                timestamp: checkbox.dataset.timestamp,
+                cam_no: checkbox.dataset.cam
+            }));
+        }
+
+        function resetCheckedBoxes() {
+            checkedBoxes = {};
+        }
+        
+        function fetchWarnings() {
+            fetch('/get_warnings')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Received warnings data:', data); 
+                    console.log('Number of warnings:', data.length); 
+                    if (Array.isArray(data)) {
+                        updateWarningList(data);
+                    } else {
+                        console.error('Received invalid data format:', data);
+                    }
+                })
+                .catch(error => {
+                    console.error('경고 목록을 가져오는 중 오류 발생:', error);
+                });
+        }
+
+        function updateWarningList(warnings) {
+            const warningList = document.getElementById('warningList');
+            if (!warningList) {
+                console.error('Warning list element not found');
+                return;
+            }
+
+            // 현재 체크된 경고들의 ID를 저장
+            const checkedWarnings = getSelectedWarnings();
+
+            warningList.innerHTML = '';
+            
+            if (!Array.isArray(warnings) || warnings.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="3" style="text-align: center;">경고 목록이 비어있습니다.</td>';
+                warningList.appendChild(row);
+                return;
+            }
+            
+            // 카메라별로 그룹화
+            const groupedWarnings = {};
+            warnings.forEach(warning => {
+                if (warning.object_id === undefined || !warning.timestamp || !warning.cam_no) {
+                    console.error('Invalid warning data:', warning);
+                    return;
+                }
+                
+                const camNo = warning.cam_no;
+                if (!groupedWarnings[camNo]) {
+                    groupedWarnings[camNo] = [];
+                }
+                groupedWarnings[camNo].push(warning);
+            });
+            
+            // 카메라 번호 순서대로 정렬
+            const sortedCamNos = Object.keys(groupedWarnings).sort((a, b) => parseInt(a) - parseInt(b));
+            
+            // 각 카메라 그룹에 대해
+            sortedCamNos.forEach(camNo => {
+                // 카메라 그룹 헤더 추가
+                const headerRow = document.createElement('tr');
+                headerRow.className = 'camera-group-header';
+                headerRow.innerHTML = `<td colspan="3">Camera ${camNo}</td>`;
+                warningList.appendChild(headerRow);
+                
+                // 해당 카메라의 경고들을 추가
+                groupedWarnings[camNo].forEach(warning => {
+                    const row = document.createElement('tr');
+                    const warningId = `${warning.cam_no}_${warning.object_id}_${warning.timestamp}`;
+                    
+                    row.innerHTML = `
+                        <td>
+                            <input type="checkbox" class="warning-checkbox" 
+                                   data-id="${warning.object_id}"
+                                   data-timestamp="${warning.timestamp}"
+                                   data-cam="${warning.cam_no}"
+                                   ${checkedWarnings.some(w => w.object_id === warning.object_id.toString() && 
+                                                             w.timestamp === warning.timestamp && 
+                                                             w.cam_no === warning.cam_no.toString()) ? 'checked' : ''}>
+                        </td>
+                        <td style="cursor: pointer; color: blue; text-decoration: underline;" 
+                            onclick="openImagePopup('/img_data/' + encodeURIComponent('${warning.image_path}'), ${warning.cam_no})">${warning.timestamp}</td>
+                        <td>${warning.object_id}</td>
+                    `;
+                    warningList.appendChild(row);
+                });
+            });
+            
+            // 체크박스 이벤트 리스너 다시 추가
+            document.querySelectorAll('.warning-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const selectedCount = document.querySelectorAll('.warning-checkbox:checked').length;
+                    document.getElementById('deleteSelected').disabled = selectedCount === 0;
+                    document.getElementById('rescueSelected').disabled = selectedCount === 0;
+                });
+            });
+        }
+
+        // 페이지 로드 시 경고 목록 가져오기
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, fetching warnings...'); 
+            fetchWarnings();
+        });
+
+        // 10초마다 경고 목록 업데이트
+        setInterval(fetchWarnings, 1000);
+
+        function showWarningPopup(camNo) {
+            // 기존 팝업 제거
+            const existingPopup = document.querySelector('.warning-popup');
+            if (existingPopup) {
+                existingPopup.remove();
+            }
+
+            // 새 팝업 생성
+            const popup = document.createElement('div');
+            popup.className = 'warning-popup';
+            popup.textContent = `CAM${camNo} 낙상자 발생`;
+            document.body.appendChild(popup);
+
+            // 3초 후 자동으로 닫기
+            setTimeout(() => {
+                popup.remove();
+            }, 3000);
+        }
+
+        // 1초마다 새로운 경고 확인
+        setInterval(() => {
+            fetch('/check_new_warning')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.warning) {
+                        console.log("Warning received:", data);  
+                        showWarningPopup(data.cam);
+                        fetchWarnings();  
+                    }
+                })
+                .catch(error => {
+                    console.error("Error checking warnings:", error);  
+                });
+        }, 1000);
+
+        function openImagePopup(imageUrl, camNo) {
+            // 이미지를 먼저 로드하여 실제 크기 확인
+            const img = new Image();
+            img.onload = function() {
+                // 이미지 크기 설정
+                const width = this.width;
+                const height = this.height;
+                
+                // 화면 크기 가져오기
+                const screenWidth = window.screen.width;
+                const screenHeight = window.screen.height;
+                
+                // 팝업창 위치 설정
+                let left = screenWidth * 0.6;  // 화면 60% 위치
+                let top;
+                
+                if (camNo === 1) {
+                    top = screenHeight * 0.1;  // Camera 1: 화면 상단 10% 위치
+                } else {
+                    top = screenHeight * 0.5;  // Camera 2: 화면 중간 50% 위치
+                }
+                
+                // 팝업창 열기
+                window.open(imageUrl, '_blank', 
+                    `width=${width},height=${height},left=${left},top=${top},` +
+                    'toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes');
+            };
+            img.src = imageUrl;
+        }
+    </script>
+</body>
+</html>
